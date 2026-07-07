@@ -1,0 +1,33 @@
+body{
+    margin:0;
+    font-family:Poppins,sans-serif;
+    background:#F8FAFC;
+    color:#1E293B;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+button{
+    cursor:pointer;
+}
+
+a{
+    text-decoration:none;
+    color:inherit;
+}
+
+section{
+    padding-left:30px;
+    padding-right:30px;
+}
+
+.shadow-card{
+    box-shadow:0 10px 40px rgba(0,0,0,.08);
+}
+
