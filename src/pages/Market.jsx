@@ -1,232 +1,397 @@
+import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
+import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import { getStock } from "../services/marketService";
+import {
+  addWatchlist,
+  getWatchlist,
+  deleteWatchlist,
+} from "../services/watchlistService";
+import { getNews } from "../services/newsService";
+import TradingChart from "../components/TradingChart";
+import Floating3DBackground from "../components/Floating3DBackground";
+import { motion } from "framer-motion";
 
-const marketData = [
-  {
-    name: "NIFTY 50",
-    price: "25,180.40",
-    change: "+1.32%",
-    color: "text-green-600",
-    description: "India's benchmark equity index."
-  },
-  {
-    name: "SENSEX",
-    price: "82,560.70",
-    change: "+0.94%",
-    color: "text-green-600",
-    description: "Top 30 companies listed on BSE."
-  },
-  {
-    name: "NASDAQ",
-    price: "22,500.15",
-    change: "+0.82%",
-    color: "text-green-600",
-    description: "Technology-focused US market index."
-  },
-  {
-    name: "Gold",
-    price: "₹9,850 / gram",
-    change: "-0.25%",
-    color: "text-red-600",
-    description: "Safe-haven asset during volatility."
-  },
-  {
-    name: "Bitcoin",
-    price: "$108,400",
-    change: "+3.20%",
-    color: "text-green-600",
-    description: "Largest cryptocurrency by market cap."
-  },
-  {
-    name: "USD / INR",
-    price: "₹85.72",
-    change: "+0.12%",
-    color: "text-green-600",
-    description: "Current US Dollar exchange rate."
+export default function Market() {
+  const [symbol, setSymbol] = useState("AAPL");
+  const [stock, setStock] = useState(null);
+  const [news, setNews] = useState([]);
+  const [watchlist, setWatchlist] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  async function loadWatchlist() {
+    if (!user) return;
+
+    try {
+      const data = await getWatchlist(user.id);
+      setWatchlist(data);
+    } catch (err) {
+      console.log(err);
+    }
   }
-];
 
-const news = [
-  "RBI keeps repo rate unchanged to support economic growth.",
-  "NIFTY 50 reaches a fresh all-time high amid strong buying.",
-  "Gold prices remain stable despite global inflation concerns.",
-  "Technology stocks continue outperforming broader markets.",
-  "Foreign Institutional Investors increase investments in Indian equities.",
-  "Experts recommend portfolio diversification amid market volatility."
-];
+  async function saveWatchlist() {
+    if (!user || !stock) return;
 
-const tips = [
-  {
-    title: "Diversify Investments",
-    text: "Avoid investing your entire portfolio in a single asset class."
-  },
-  {
-    title: "Invest for the Long Term",
-    text: "Long-term investing helps reduce short-term market volatility."
-  },
-  {
-    title: "Review Regularly",
-    text: "Rebalance your portfolio every 6–12 months."
+    try {
+      await addWatchlist(user.id, stock.profile.ticker);
+      loadWatchlist();
+      alert("Added to Watchlist");
+    } catch (err) {
+      alert("Unable to add.");
+    }
   }
-];
 
-function Market() {
+  async function removeWatch(id) {
+    await deleteWatchlist(id);
+    loadWatchlist();
+  }
+
+  async function loadStock(sym = symbol) {
+    try {
+      setLoading(true);
+      setError("");
+
+      const market = await getStock(sym.toUpperCase());
+
+      if (!market.success) {
+        setError("Stock not found");
+        setStock(null);
+        return;
+      }
+
+      setStock(market);
+
+      try {
+        const articles = await getNews(sym.toUpperCase());
+      
+        if (Array.isArray(articles)) {
+          setNews(articles.slice(0, 6));
+        } else {
+          setNews([]);
+        }
+      } catch {
+        setNews([]);
+      }
+
+    } catch (err) {
+      console.log(err);
+      setError("Unable to fetch market data.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadStock(symbol);
+    loadWatchlist();
+  }, []);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadStock(symbol);
+    }, 30000);
+  
+    return () => clearInterval(interval);
+  }, [symbol]);
+
   return (
     <>
       <Navbar />
+      <Floating3DBackground />
 
-      <div className="bg-slate-100 min-h-screen py-12">
+      <div className="min-h-screen text-white relative z-10 py-10 px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-5xl font-black bg-gradient-to-r from-white via-gray-200 to-indigo-300 bg-clip-text text-transparent tracking-tight">
+              Live Market Dashboard
+            </h1>
+            <p className="text-gray-400 mt-2 text-lg">
+              Live stock prices • Company information • News • Watchlist
+            </p>
+          </motion.div>
 
-        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-4 mt-10">
+            <input
+              className="flex-1 rounded-xl glass-input p-4 outline-none text-white bg-slate-950/40"
+              value={symbol}
+              placeholder="Search AAPL, NVDA, TSLA..."
+              onChange={(e) => setSymbol(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && loadStock(symbol)}
+            />
 
-          <h1 className="text-5xl font-bold">
-            Market Outlook
-          </h1>
+            <button
+              onClick={() => loadStock(symbol)}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-8 flex items-center gap-2 font-bold shadow-lg shadow-indigo-600/20"
+            >
+              <Search size={20} />
+              Search
+            </button>
+          </div>
 
-          <p className="text-gray-600 mt-3 text-lg">
-            Monitor major financial markets and stay updated with investment trends.
-          </p>
+          {loading && (
+            <div className="glass-panel rounded-2xl p-12 text-center text-xl font-bold mt-10 border border-white/5">
+              <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              Loading Market Data...
+            </div>
+          )}
 
-          {/* Market Cards */}
+          {!loading && error && (
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl p-6 mt-10 text-center font-semibold">
+              {error}
+            </div>
+          )}
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12">
-
-            {marketData.map((item) => (
-
-              <div
-                key={item.name}
-                className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-xl transition duration-300"
+          {!loading && stock && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="glass-panel p-8 mt-10 border border-white/5 shadow-2xl rounded-2xl"
               >
+                <div className="flex items-center gap-6 flex-wrap">
+                  {stock.profile.logo && (
+                    <img
+                      src={stock.profile.logo}
+                      className="w-20 h-20 rounded-2xl border border-white/10 p-2 bg-white/5 object-contain"
+                      alt=""
+                    />
+                  )}
 
-                <h2 className="text-2xl font-bold">
-                  {item.name}
-                </h2>
+                  <div>
+                    <h2 className="text-3xl font-black bg-gradient-to-r from-white via-indigo-100 to-cyan-200 bg-clip-text text-transparent">
+                      {stock.profile.name}
+                    </h2>
+                    <p className="text-gray-400 text-lg font-bold">
+                      {stock.profile.ticker}
+                    </p>
+                    <p className="text-gray-500 text-sm">
+                      {stock.profile.exchange}
+                    </p>
+                  </div>
+                </div>
 
-                <p className="text-4xl font-bold mt-5">
-                  {item.price}
-                </p>
+                <div className="grid sm:grid-cols-3 gap-6 mt-10">
+                  <div className="bg-slate-900/40 border border-white/5 rounded-xl p-6">
+                    <p className="text-gray-500 text-sm">Current Price</p>
+                    <h2 className="text-4xl font-black mt-3 text-white">
+                      ${stock.quote.c}
+                    </h2>
+                  </div>
 
-                <p className={`mt-3 font-semibold ${item.color}`}>
-                  {item.change}
-                </p>
+                  <div className="bg-slate-900/40 border border-white/5 rounded-xl p-6">
+                    <p className="text-gray-500 text-sm">Day Change</p>
+                    <div className="flex items-center gap-2 mt-3">
+                      {stock.quote.d >= 0 ? (
+                        <TrendingUp className="text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="text-rose-400" />
+                      )}
+                      <h2
+                        className={`text-4xl font-black ${
+                          stock.quote.d >= 0
+                            ? "text-emerald-400"
+                            : "text-rose-400"
+                        }`}
+                      >
+                        {stock.quote.d}
+                      </h2>
+                    </div>
+                  </div>
 
-                <p className="text-gray-500 mt-5">
-                  {item.description}
-                </p>
+                  <div className="bg-slate-900/40 border border-white/5 rounded-xl p-6">
+                    <p className="text-gray-500 text-sm">Change %</p>
+                    <h2
+                      className={`text-4xl font-black mt-3 ${
+                        stock.quote.dp >= 0
+                          ? "text-emerald-400"
+                          : "text-rose-400"
+                      }`}
+                    >
+                      {stock.quote.dp}%
+                    </h2>
+                  </div>
+                </div>
 
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+                  <div className="bg-slate-950/20 border border-white/5 p-4 rounded-xl text-center">
+                    <p className="text-gray-500 text-xs">High</p>
+                    <h3 className="text-lg font-bold mt-1">${stock.quote.h}</h3>
+                  </div>
+
+                  <div className="bg-slate-950/20 border border-white/5 p-4 rounded-xl text-center">
+                    <p className="text-gray-500 text-xs">Low</p>
+                    <h3 className="text-lg font-bold mt-1">${stock.quote.l}</h3>
+                  </div>
+
+                  <div className="bg-slate-950/20 border border-white/5 p-4 rounded-xl text-center">
+                    <p className="text-gray-500 text-xs">Open</p>
+                    <h3 className="text-lg font-bold mt-1">${stock.quote.o}</h3>
+                  </div>
+
+                  <div className="bg-slate-950/20 border border-white/5 p-4 rounded-xl text-center">
+                    <p className="text-gray-500 text-xs">Prev Close</p>
+                    <h3 className="text-lg font-bold mt-1">${stock.quote.pc}</h3>
+                  </div>
+                </div>
+
+                <button
+                  onClick={saveWatchlist}
+                  className="mt-8 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3 rounded-xl transition duration-300 shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/35"
+                >
+                  ⭐ Add to Watchlist
+                </button>
+              </motion.div>
+
+              {/* Trading Chart */}
+              <div className="mt-8">
+                <TradingChart symbol={stock.profile.ticker} />
               </div>
 
-            ))}
+              {/* Company Information */}
+              <div className="glass-panel p-8 mt-10 border border-white/5 shadow-2xl rounded-2xl">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent mb-8">
+                  Company Information
+                </h2>
 
-          </div>
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+                  <div className="bg-slate-900/40 p-5 rounded-xl border border-white/5">
+                    <p className="text-gray-500">Country</p>
+                    <h3 className="font-bold text-white mt-1">{stock.profile.country || "N/A"}</h3>
+                  </div>
 
-          {/* Market Headlines */}
+                  <div className="bg-slate-900/40 p-5 rounded-xl border border-white/5">
+                    <p className="text-gray-500">Currency</p>
+                    <h3 className="font-bold text-white mt-1">{stock.profile.currency || "N/A"}</h3>
+                  </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-8 mt-16">
+                  <div className="bg-slate-900/40 p-5 rounded-xl border border-white/5">
+                    <p className="text-gray-500">Industry</p>
+                    <h3 className="font-bold text-white mt-1">{stock.profile.finnhubIndustry || "N/A"}</h3>
+                  </div>
 
-            <h2 className="text-3xl font-bold mb-8">
-              📰 Market Headlines
-            </h2>
+                  <div className="bg-slate-900/40 p-5 rounded-xl border border-white/5">
+                    <p className="text-gray-500">IPO Date</p>
+                    <h3 className="font-bold text-white mt-1">{stock.profile.ipo || "N/A"}</h3>
+                  </div>
 
-            <div className="space-y-5">
+                  <div className="bg-slate-900/40 p-5 rounded-xl border border-white/5">
+                    <p className="text-gray-500">Exchange</p>
+                    <h3 className="font-bold text-white mt-1">{stock.profile.exchange || "N/A"}</h3>
+                  </div>
 
-              {news.map((headline, index) => (
+                  <div className="bg-slate-900/40 p-5 rounded-xl border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-500">Website</p>
+                      <a
+                        href={stock.profile.weburl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-400 font-semibold hover:underline block mt-1"
+                      >
+                        Official Website
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                <div
-                  key={index}
-                  className="border-b pb-4"
-                >
-
-                  <p className="font-medium">
-                    {headline}
-                  </p>
-
+              {/* Latest Financial News */}
+              <div className="glass-panel p-8 mt-10 border border-white/5 shadow-2xl rounded-2xl">
+                <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent">
+                    Latest Financial News
+                  </h2>
+                  <span className="text-gray-500 text-sm font-semibold">
+                    Top 6 Headlines
+                  </span>
                 </div>
 
-              ))}
+                {news.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500 border border-white/5 rounded-xl bg-slate-950/20">
+                    No recent news available.
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {news.map((article, index) => (
+                      <a
+                        key={index}
+                        href={article.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block bg-slate-900/30 hover:bg-slate-900/60 hover:border-white/10 transition-all duration-300 rounded-xl p-6 border border-white/5 flex flex-col justify-between"
+                      >
+                        <div>
+                          <h3 className="font-bold text-lg text-white line-clamp-2">
+                            {article.headline}
+                          </h3>
+                          <p className="text-gray-400 mt-3 text-sm line-clamp-3">
+                            {article.summary}
+                          </p>
+                        </div>
+                        <p className="text-indigo-400 mt-4 font-semibold text-sm hover:underline">
+                          Read Full Article →
+                        </p>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            </div>
-
-          </div>
-
-          {/* Investment Tips */}
-
-          <div className="mt-16">
-
-            <h2 className="text-3xl font-bold">
-              Investment Tips
-            </h2>
-
-            <div className="grid md:grid-cols-3 gap-6 mt-8">
-
-              {tips.map((tip) => (
-
-                <div
-                  key={tip.title}
-                  className="bg-white rounded-2xl shadow-lg p-8"
-                >
-
-                  <h3 className="text-2xl font-bold">
-                    {tip.title}
-                  </h3>
-
-                  <p className="text-gray-600 mt-4">
-                    {tip.text}
-                  </p>
-
+              {/* Watchlist */}
+              <div className="glass-panel p-8 mt-10 border border-white/5 shadow-2xl rounded-2xl">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent">
+                    My Watchlist
+                  </h2>
+                  <span className="text-gray-500 text-sm font-semibold bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                    {watchlist.length} Stocks
+                  </span>
                 </div>
 
-              ))}
+                {watchlist.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500 border border-white/5 rounded-xl bg-slate-950/20">
+                    Your watchlist is empty.
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {watchlist.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex justify-between items-center border border-white/5 rounded-xl p-5 bg-slate-900/30 hover:border-white/10 transition"
+                      >
+                        <div>
+                          <h3 className="font-bold text-lg text-white">
+                            {item.symbol}
+                          </h3>
+                          <p className="text-gray-500 text-xs">
+                            Saved for quick tracking
+                          </p>
+                        </div>
 
-            </div>
-
-          </div>
-
-          {/* AI Market Summary */}
-
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8 mt-16">
-
-            <h2 className="text-3xl font-bold">
-              🤖 AI Market Summary
-            </h2>
-
-            <p className="mt-6 text-gray-700 leading-8">
-
-              Current market indicators suggest a moderately bullish outlook.
-              Equity markets continue to perform well while gold remains a
-              stable hedge against uncertainty. Investors with a long-term
-              investment horizon may consider maintaining diversified exposure
-              across equities, ETFs, debt instruments, commodities, and cash.
-
-            </p>
-
-          </div>
-
-          {/* Disclaimer */}
-
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 mt-12">
-
-            <h2 className="text-xl font-bold">
-              Disclaimer
-            </h2>
-
-            <p className="mt-4 text-gray-700">
-
-              Market prices, news, and analytics displayed in this project are
-              sample data for educational purposes. They do not represent
-              real-time financial information or investment advice.
-
-            </p>
-
-          </div>
-
+                        <button
+                          onClick={() => removeWatch(item.id)}
+                          className="bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 border border-rose-600/20 px-4 py-2 rounded-lg text-xs font-bold transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
-
       </div>
-
     </>
   );
 }
-
-export default Market;
-
-

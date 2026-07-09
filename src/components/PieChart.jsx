@@ -1,55 +1,59 @@
 import {
-    Chart as ChartJS,
-    ArcElement,
-    Tooltip,
-    Legend
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend
 } from "chart.js";
 
 import { Pie } from "react-chartjs-2";
 
 ChartJS.register(
-    ArcElement,
-    Tooltip,
-    Legend
+  ArcElement,
+  Tooltip,
+  Legend
 );
 
-function PieChart({ portfolio }) {
-
-    const data = {
-        labels: [
-            "Stocks",
-            "ETFs",
-            "Bonds",
-            "Gold",
-            "Cash"
+export default function PieChart({ portfolio }) {
+  const data = {
+    labels: ["Stocks", "ETFs", "Bonds", "Gold", "Cash"],
+    datasets: [
+      {
+        data: [
+          portfolio?.Stocks || 0,
+          portfolio?.ETFs || 0,
+          portfolio?.Bonds || 0,
+          portfolio?.Gold || 0,
+          portfolio?.Cash || 0
         ],
+        backgroundColor: [
+          "#6366f1", // indigo-500
+          "#06b6d4", // cyan-500
+          "#eab308", // yellow-500
+          "#ec4899", // pink-500
+          "#64748b"  // slate-500
+        ],
+        borderColor: "rgba(255, 255, 255, 0.05)",
+        borderWidth: 1
+      }
+    ]
+  };
 
-        datasets: [
-            {
-                data: [
-                    portfolio.Stocks,
-                    portfolio.ETFs,
-                    portfolio.Bonds,
-                    portfolio.Gold,
-                    portfolio.Cash
-                ],
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: {
+          color: "#9ca3af", // gray-400
+          font: {
+            family: "'Inter', sans-serif",
+            weight: "600"
+          },
+          padding: 20
+        }
+      }
+    }
+  };
 
-                backgroundColor: [
-                    "#2563EB",
-                    "#10B981",
-                    "#F59E0B",
-                    "#EF4444",
-                    "#6B7280"
-                ]
-            }
-        ]
-    };
-
-    return (
-        <Pie data={data} />
-    );
+  return <Pie data={data} options={options} />;
 }
-
-export default PieChart;
-
-

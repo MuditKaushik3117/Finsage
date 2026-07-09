@@ -1,293 +1,244 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { generatePortfolio } from "../utils/portfolioEngine";
+import Floating3DBackground from "../components/Floating3DBackground";
+import { motion } from "framer-motion";
+import {
+  getPortfolio,
+  generatePortfolio,
+} from "../services/portfolioService";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-function Recommendation() {
-  const user = JSON.parse(localStorage.getItem("portfolioUser"));
+export default function Recommendation() {
+  const [portfolio, setPortfolio] = useState(null);
 
-  if (!user) {
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) return;
+  
+    async function load() {
+      try {
+        let data = await getPortfolio(user.id);
+
+        if (!data.id) {
+            await generatePortfolio(user.id);
+            data = await getPortfolio(user.id);
+        }
+
+        setPortfolio(data);  
+      } catch (err) {
+        console.error(err);
+        setPortfolio({});
+      }
+    }
+  
+    load();
+  }, []);
+
+  if (!portfolio || !portfolio.id) {
     return (
       <>
         <Navbar />
-        <div className="min-h-screen flex items-center justify-center">
-          <h2 className="text-3xl font-bold">
-            Please complete the assessment first.
-          </h2>
+        <Floating3DBackground />
+        <div className="min-h-screen flex items-center justify-center text-white relative z-10">
+          <div className="text-center bg-slate-900/60 backdrop-blur-lg border border-white/10 p-10 rounded-2xl shadow-lg max-w-md">
+            <h2 className="text-3xl font-black mb-3 text-red-400">
+              No Portfolio Found
+            </h2>
+            <p className="text-gray-300 mb-6">
+              Complete your assessment first to generate your AI portfolio.
+            </p>
+            <Link
+              to="/assessment"
+              className="bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white px-8 py-3 rounded-xl transition inline-block font-bold"
+            >
+              Start Assessment
+            </Link>
+          </div>
         </div>
       </>
     );
   }
 
-  const portfolio = generatePortfolio(user);
+  const chartData = [
+    { name: "Stocks", value: portfolio.stocks },
+    { name: "ETF", value: portfolio.etf },
+    { name: "Bonds", value: portfolio.bonds },
+    { name: "Gold", value: portfolio.gold },
+    { name: "Cash", value: portfolio.cash },
+  ];
 
-  localStorage.setItem("portfolio", JSON.stringify(portfolio));
+  const COLORS = [
+    "#6366f1", // indigo-500
+    "#06b6d4", // cyan-500
+    "#eab308", // yellow-500
+    "#ec4899", // pink-500
+    "#64748b"  // slate-500
+  ];
 
   return (
     <>
       <Navbar />
+      <Floating3DBackground />
 
-      <div className="bg-slate-100 min-h-screen py-12">
-
-        <div className="max-w-6xl mx-auto px-6">
-
-          <h1 className="text-5xl font-bold text-center">
+      <div className="min-h-screen text-white relative z-10 py-10 px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-6xl mx-auto"
+        >
+          <h1 className="text-5xl font-black bg-gradient-to-r from-white via-gray-200 to-indigo-300 bg-clip-text text-transparent tracking-tight mb-2">
             AI Portfolio Recommendation
           </h1>
 
-          <p className="text-center text-gray-600 mt-4 text-lg">
-            Personalized investment strategy based on your financial profile
+          <p className="text-gray-400 mb-10 text-lg">
+            This portfolio has been generated using your latest risk assessment.
           </p>
 
-          {/* User Summary */}
+          <div className="grid md:grid-cols-2 gap-10">
+            {/* Portfolio Allocation list */}
+            <div className="glass-panel p-8 border border-white/5 shadow-2xl rounded-2xl">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent mb-6">
+                Asset Allocation
+              </h2>
 
-          <div className="bg-white rounded-2xl shadow-lg p-8 mt-10">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between text-sm font-semibold text-gray-300">
+                    <span>Stocks</span>
+                    <span>{portfolio.stocks}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950/60 rounded-full h-3 mt-2 border border-white/5">
+                    <div
+                      className="bg-indigo-500 h-3 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                      style={{ width: `${portfolio.stocks}%` }}
+                    />
+                  </div>
+                </div>
 
-            <h2 className="text-3xl font-bold">
-              Hello, {user.name} 👋
-            </h2>
+                <div>
+                  <div className="flex justify-between text-sm font-semibold text-gray-300">
+                    <span>ETFs</span>
+                    <span>{portfolio.etf}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950/60 rounded-full h-3 mt-2 border border-white/5">
+                    <div
+                      className="bg-cyan-500 h-3 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                      style={{ width: `${portfolio.etf}%` }}
+                    />
+                  </div>
+                </div>
 
-            <p className="text-gray-600 mt-3">
-              Based on your age, financial goals, investment horizon and risk
-              appetite, our AI has created the following portfolio allocation.
-            </p>
+                <div>
+                  <div className="flex justify-between text-sm font-semibold text-gray-300">
+                    <span>Bonds</span>
+                    <span>{portfolio.bonds}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950/60 rounded-full h-3 mt-2 border border-white/5">
+                    <div
+                      className="bg-yellow-500 h-3 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                      style={{ width: `${portfolio.bonds}%` }}
+                    />
+                  </div>
+                </div>
 
-          </div>
+                <div>
+                  <div className="flex justify-between text-sm font-semibold text-gray-300">
+                    <span>Gold</span>
+                    <span>{portfolio.gold}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950/60 rounded-full h-3 mt-2 border border-white/5">
+                    <div
+                      className="bg-pink-500 h-3 rounded-full shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                      style={{ width: `${portfolio.gold}%` }}
+                    />
+                  </div>
+                </div>
 
-          {/* Portfolio Cards */}
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mt-10">
-
-            <div className="bg-blue-100 rounded-xl p-6 text-center">
-              <h3 className="font-semibold">📈 Stocks</h3>
-              <p className="text-4xl font-bold mt-4">
-                {portfolio.Stocks}%
-              </p>
-            </div>
-
-            <div className="bg-green-100 rounded-xl p-6 text-center">
-              <h3 className="font-semibold">📊 ETFs</h3>
-              <p className="text-4xl font-bold mt-4">
-                {portfolio.ETFs}%
-              </p>
-            </div>
-
-            <div className="bg-yellow-100 rounded-xl p-6 text-center">
-              <h3 className="font-semibold">🏦 Bonds</h3>
-              <p className="text-4xl font-bold mt-4">
-                {portfolio.Bonds}%
-              </p>
-            </div>
-
-            <div className="bg-orange-100 rounded-xl p-6 text-center">
-              <h3 className="font-semibold">🥇 Gold</h3>
-              <p className="text-4xl font-bold mt-4">
-                {portfolio.Gold}%
-              </p>
-            </div>
-
-            <div className="bg-gray-200 rounded-xl p-6 text-center">
-              <h3 className="font-semibold">💵 Cash</h3>
-              <p className="text-4xl font-bold mt-4">
-                {portfolio.Cash}%
-              </p>
-            </div>
-
-          </div>
-
-          {/* Recommendation Details */}
-
-          <div className="bg-white rounded-2xl shadow-lg p-8 mt-10">
-
-            <h2 className="text-2xl font-bold">
-              Recommendation Summary
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-8 mt-8">
-
-              <div>
-
-                <p className="mb-4">
-                  <strong>Risk Level:</strong> {portfolio.riskLevel}
-                </p>
-
-                <p className="mb-4">
-                  <strong>Expected Annual Return:</strong>{" "}
-                  {portfolio.expectedReturn}
-                </p>
-
-                <p className="mb-4">
-                  <strong>Investment Goal:</strong> {user.goal}
-                </p>
-
-                <p className="mb-4">
-                  <strong>Investment Horizon:</strong>{" "}
-                  {user.horizon}
-                </p>
-
+                <div>
+                  <div className="flex justify-between text-sm font-semibold text-gray-300">
+                    <span>Cash</span>
+                    <span>{portfolio.cash}%</span>
+                  </div>
+                  <div className="w-full bg-slate-950/60 rounded-full h-3 mt-2 border border-white/5">
+                    <div
+                      className="bg-slate-500 h-3 rounded-full shadow-[0_0_10px_rgba(100,116,139,0.5)]"
+                      style={{ width: `${portfolio.cash}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-
-              <div>
-
-                <p className="mb-4">
-                  <strong>Annual Income:</strong> ₹
-                  {Number(user.income).toLocaleString()}
-                </p>
-
-                <p className="mb-4">
-                  <strong>Current Savings:</strong> ₹
-                  {Number(user.savings).toLocaleString()}
-                </p>
-
-                <p className="mb-4">
-                  <strong>Age:</strong> {user.age}
-                </p>
-
-                <p className="mb-4">
-                  <strong>Recommended Review:</strong>
-                  {" "}Every 6 Months
-                </p>
-
-              </div>
-
             </div>
 
+            {/* Pie Chart Card */}
+            <div className="glass-panel p-8 border border-white/5 shadow-2xl rounded-2xl flex flex-col justify-between">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent text-center mb-6">
+                Portfolio Distribution
+              </h2>
+
+              <div className="flex-1 flex items-center justify-center p-4">
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius={100}
+                      label
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell
+                          key={index}
+                          fill={COLORS[index]}
+                          stroke="rgba(255,255,255,0.05)"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: "#0b0f19", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
 
-          {/* AI Explanation */}
-
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-8 mt-10">
-
-            <h2 className="text-2xl font-bold">
-              🤖 Why This Portfolio?
+          {/* AI Insights Card */}
+          <div className="glass-panel p-10 border border-white/5 shadow-2xl rounded-2xl mt-10">
+            <h2 className="text-3xl font-black bg-gradient-to-r from-indigo-200 to-cyan-200 bg-clip-text text-transparent mb-6">
+              AI Investment Insights
             </h2>
 
-            <ul className="list-disc pl-6 mt-6 space-y-3">
-
-              <li>
-                Matches your selected risk appetite.
+            <ul className="space-y-4 text-gray-300 text-sm">
+              <li className="flex items-start gap-3">
+                <span className="text-indigo-400 font-bold">▶</span>
+                <span>Maintain a diversified portfolio across multiple asset classes to lower systemic risk.</span>
               </li>
-
-              <li>
-                Diversifies investments across multiple asset classes.
+              <li className="flex items-start gap-3">
+                <span className="text-indigo-400 font-bold">▶</span>
+                <span>Invest consistently every month using Systematic Investment Plans (SIPs) to benefit from cost averaging.</span>
               </li>
-
-              <li>
-                Optimized for long-term wealth creation.
+              <li className="flex items-start gap-3">
+                <span className="text-indigo-400 font-bold">▶</span>
+                <span>Review and rebalance your portfolio every 6–12 months to match shift changes in target risk parameters.</span>
               </li>
-
-              <li>
-                Reduces overall portfolio volatility.
+              <li className="flex items-start gap-3">
+                <span className="text-indigo-400 font-bold">▶</span>
+                <span>Ensure an emergency fund is fully capitalized before expanding high-beta equity exposure.</span>
               </li>
-
-              <li>
-                Suitable for your investment horizon.
+              <li className="flex items-start gap-3">
+                <span className="text-indigo-400 font-bold">▶</span>
+                <span>Stay committed to your long-term roadmap and prevent emotional trading decisions during volatility spikes.</span>
               </li>
-
-              <li>
-                Rebalancing every six months is recommended.
-              </li>
-
             </ul>
-
           </div>
-
-          {/* Suggested Strategy */}
-
-          <div className="bg-white rounded-2xl shadow-lg p-8 mt-10">
-
-            <h2 className="text-2xl font-bold">
-              Suggested Investment Strategy
-            </h2>
-
-            <div className="grid md:grid-cols-3 gap-6 mt-8">
-
-              <div className="bg-blue-50 rounded-xl p-6">
-
-                <h3 className="font-bold text-xl">
-                  SIP Investing
-                </h3>
-
-                <p className="mt-3 text-gray-600">
-                  Invest monthly through Systematic Investment Plans to
-                  benefit from rupee cost averaging.
-                </p>
-
-              </div>
-
-              <div className="bg-green-50 rounded-xl p-6">
-
-                <h3 className="font-bold text-xl">
-                  Long-Term Growth
-                </h3>
-
-                <p className="mt-3 text-gray-600">
-                  Stay invested for your selected horizon to maximize
-                  compounding returns.
-                </p>
-
-              </div>
-
-              <div className="bg-yellow-50 rounded-xl p-6">
-
-                <h3 className="font-bold text-xl">
-                  Diversification
-                </h3>
-
-                <p className="mt-3 text-gray-600">
-                  Spread investments across equity, debt, ETFs,
-                  commodities and cash.
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* Disclaimer */}
-
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 mt-10">
-
-            <h2 className="text-xl font-bold">
-              Investment Disclaimer
-            </h2>
-
-            <p className="mt-4 text-gray-700">
-              This recommendation is generated using a rule-based AI model
-              for educational purposes. It should not be considered financial
-              advice. Please consult a certified financial advisor before
-              making investment decisions.
-            </p>
-
-          </div>
-
-          {/* Navigation Buttons */}
-
-          <div className="flex justify-center gap-6 mt-12">
-
-            <Link
-              to="/dashboard"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl transition"
-            >
-              View Dashboard
-            </Link>
-
-            <Link
-              to="/market"
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-xl transition"
-            >
-              Market Outlook
-            </Link>
-
-          </div>
-
-        </div>
-
+        </motion.div>
       </div>
     </>
   );
 }
-
-export default Recommendation;
-
-
